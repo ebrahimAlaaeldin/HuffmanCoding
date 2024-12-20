@@ -6,6 +6,8 @@ public class Decompress {
     private HashMap<Byte, BitSet> map = new HashMap<>();
     private HashMap<Byte, Integer> codeLengths = new HashMap<>();
     private String filePath;
+    // Map for decoding Huffman codes directly
+    private HashMap<String, Byte> decodingMap = new HashMap<>();
     private String decodedFilePath;
     private long originalFileLength = -1;
 
@@ -17,13 +19,12 @@ public class Decompress {
     public void decompress() throws IOException {
         try (BufferedInputStream inputStream = new BufferedInputStream(new FileInputStream(filePath));
              BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(decodedFilePath))) {
-
-            readHeader(inputStream);
+            readHeaderAndBuildDecodingMap(inputStream);
             decodeData(inputStream, outputStream);
         }
     }
 
-    private void readHeader(BufferedInputStream inputStream) throws IOException {
+    private void readHeaderAndBuildDecodingMap(BufferedInputStream inputStream) throws IOException {
         StringBuilder headerBuilder = new StringBuilder();
         int currentByte;
 
@@ -33,7 +34,6 @@ public class Decompress {
                 if (line.isEmpty()) {
                     break;
                 }
-
                 if (line.startsWith("LENGTH:")) {
                     // Parse the length of the original file
                     originalFileLength = Long.parseLong(line.substring("LENGTH:".length()));
@@ -42,50 +42,35 @@ public class Decompress {
                     String[] parts = line.split(":");
                     byte key = Byte.parseByte(parts[0]);
                     String huffmanCode = parts[1];
-
-                    BitSet bitSet = new BitSet(huffmanCode.length());
-                    for (int i = 0; i < huffmanCode.length(); i++) {
-                        if (huffmanCode.charAt(i) == '1') {
-                            bitSet.set(i);
-                        }
-                    }
-
-                    map.put(key, bitSet);
-                    codeLengths.put(key, huffmanCode.length());
+                    decodingMap.put(huffmanCode, key);
                 }
                 headerBuilder.setLength(0);
             } else {
                 headerBuilder.append((char) currentByte);
             }
         }
+
+        this.decodingMap = decodingMap; // Store the decoding map for later use
     }
-
     private void decodeData(BufferedInputStream inputStream, BufferedOutputStream outputStream) throws IOException {
-        HashMap<String, Byte> invertedMap = new HashMap<>();
-        for (Byte key : map.keySet()) {
-            BitSet bitSet = map.get(key);
-            int length = codeLengths.get(key);
-            StringBuilder binaryCode = new StringBuilder();
-            for (int i = 0; i < length; i++) {
-                binaryCode.append(bitSet.get(i) ? "1" : "0");
-            }
-            invertedMap.put(binaryCode.toString(), key);
-        }
-
         StringBuilder currentCode = new StringBuilder();
         int currentByte;
         long bytesDecoded = 0;
 
         while ((currentByte = inputStream.read()) != -1) {
             for (int i = 7; i >= 0; i--) {
-                currentCode.append(((currentByte >> i) & 1) == 1 ? "1" : "0");
+                if (((currentByte >> i) & 1) == 1) {
+                    currentCode.append("1");
+                } else {
+                    currentCode.append("0");
+                }
 
-                if (invertedMap.containsKey(currentCode.toString())) {
-                    outputStream.write(invertedMap.get(currentCode.toString()));
+                Byte decodedByte = decodingMap.get(currentCode.toString());
+                if (decodedByte != null) {
+                    outputStream.write(decodedByte);
                     currentCode.setLength(0);
                     bytesDecoded++;
 
-                    // Stop if we've reached the original file length
                     if (originalFileLength != -1 && bytesDecoded == originalFileLength) {
                         return;
                     }
@@ -93,6 +78,7 @@ public class Decompress {
             }
         }
     }
+
 
     public String getDecodedFilePath() {
         return decodedFilePath;
