@@ -15,9 +15,10 @@ public class HuffmanTree {
             return frequencyComparison;
         }
     });
-
     private HashMap<Byte, BitSet> map = new HashMap<>();
     private HashMap<Byte, Integer> codeLengths = new HashMap<>();
+    private HashMap<String, BitSet> nMap = new HashMap<>();
+    private HashMap<String, Integer> nCodeLengths = new HashMap<>();
 
     private HuffmanNode root;
 
@@ -32,8 +33,16 @@ public class HuffmanTree {
     public HuffmanNode getRoot() {
         return root;
     }
+
     public HashMap<Byte, Integer> getCodeLengths() {
         return codeLengths;
+    }
+
+    public HashMap<String, BitSet> getNMap() {
+        return nMap;
+    }
+    public HashMap<String, Integer> getNCodeLengths() {
+        return nCodeLengths;
     }
 
     public void buildHuffmanTree() {
@@ -58,6 +67,7 @@ public class HuffmanTree {
             storeCodesRecursive(root, new BitSet(), 0);
         }
     }
+
     private void storeCodesRecursive(HuffmanNode node, BitSet bitSet, int bitIndex) {
         if (node.getLeft() == null && node.getRight() == null) {
             if (node.getData() != null) {
@@ -70,13 +80,60 @@ public class HuffmanTree {
             bitSet.clear(bitIndex); // Set bit to 0 for the left branch
             storeCodesRecursive(node.getLeft(), bitSet, bitIndex + 1);
         }
-
         if (node.getRight() != null) {
             bitSet.set(bitIndex); // Set bit to 1 for the right branch
             storeCodesRecursive(node.getRight(), bitSet, bitIndex + 1);
         }
     }
 
+
+    public void buildHuffmanTreeNgram() {
+        if (minHeap.isEmpty()) {
+            return;
+        }
+        while (minHeap.size() > 1) {
+            HuffmanNode node1 = minHeap.poll();
+            HuffmanNode node2 = minHeap.poll();
+            HuffmanNode newNode = new HuffmanNode(node1.getFrequency() + node2.getFrequency());
+            newNode.setLeft(node1);
+            newNode.setRight(node2);
+            minHeap.add(newNode);
+        }
+
+        this.root = minHeap.poll();
+        storeCodesNgram();
+    }
+
+    private void storeCodesNgram() {
+        if (root != null) {
+            storeCodesRecursiveNgram(root, new BitSet(), 0);
+        }
+    }
+
+    private void storeCodesRecursiveNgram(HuffmanNode node, BitSet bitSet, int bitIndex) {
+        if (node.getLeft() == null && node.getRight() == null) {
+            if (node.getData1() != null) {
+                nMap.put(node.getData1(), (BitSet) bitSet.clone());
+//                System.out.print("Node Data: "+node.getData1());
+//                System.out.println("BitSet: "+bitSet);
+                nCodeLengths.put(node.getData1(), bitIndex); // Store the length of the code
+            }
+            return;
+        }
+        if (node.getLeft() != null) {
+            bitSet.clear(bitIndex); // Set bit to 0 for the left branch
+            storeCodesRecursiveNgram(node.getLeft(), bitSet, bitIndex + 1);
+        }
+
+        if (node.getRight() != null) {
+            bitSet.set(bitIndex); // Set bit to 1 for the right branch
+            storeCodesRecursiveNgram(node.getRight(), bitSet, bitIndex + 1);
+        }
+    }
+
+
+
+    //...................................................................
 
     public void printTree() {
         if (root != null) {
@@ -123,7 +180,6 @@ public class HuffmanTree {
             System.out.println("Character: " + (char) (byte) key + " (" + key + "), Huffman code: " + binaryCode);
         }
     }
-
 
 
 }

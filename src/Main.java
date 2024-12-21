@@ -5,6 +5,8 @@ import java.io.*;
 public class Main {
 
     public static HashMap<Byte, Integer> map = new HashMap<>();
+
+    public static HashMap<String,Integer> nMap = new HashMap<>();
     static Byte[] key2 = new Byte[1];
 
     public static PriorityQueue<HuffmanNode> MinHeap = new PriorityQueue<>(new Comparator<HuffmanNode>() {
@@ -64,29 +66,44 @@ public class Main {
 
 
     public static void compress(String filePath, int n){
+        String compressedFilePath = null;
         BufferedInputStream bufferedInputStream = null;
         long startTime = System.currentTimeMillis();
         try {
             bufferedInputStream = new BufferedInputStream(new FileInputStream(filePath));
-            byte[] buffer = new byte[1024]; // 1KB buffer
+            byte[] buffer = new byte[512*n]; // 1KB buffer
             int bytesRead = 0;
             int i = 2;
             while (((bytesRead = bufferedInputStream.read(buffer)) != -1)) {
                 updateFreq(buffer, bytesRead, n);
             }
             bufferedInputStream.close();
-            addingToHeap();
-            HuffmanTree huffmanTree = new HuffmanTree( MinHeap);
-            huffmanTree.buildHuffmanTree();
-            CompressFile compressFile = new CompressFile(huffmanTree.getMap(), huffmanTree.getCodeLengths(), filePath,n);
-            compressFile.encodeAndWrite();
+            if(n==1) {
+                addingToHeap();
+                HuffmanTree huffmanTree = new HuffmanTree(MinHeap);
+                huffmanTree.buildHuffmanTree();
+                CompressFile compressFile = new CompressFile(huffmanTree.getMap(), huffmanTree.getCodeLengths(), filePath, n);
+                compressFile.encodeAndWrite();
+                compressedFilePath = compressFile.getEncodedFilePath();
+            }
+            else if(n>1){
+                addingToHeapNgram();
+                HuffmanTree huffmanTree = new HuffmanTree(MinHeap);
+                huffmanTree.buildHuffmanTreeNgram();
+                CompressFile compressFile = new CompressFile(huffmanTree.getNMap(), huffmanTree.getNCodeLengths(), filePath, n,1);
+                compressFile.encodeAndWriteNgram();
+                compressedFilePath = compressFile.getEncodedFilePath();
+            }
             long endTime = System.currentTimeMillis();
             System.out.println("Time taken to compress: " + (endTime - startTime) + "ms");
+            // Calculate compression ratio make it very precise
+            System.out.println("Compression ratio: " + (double) new File(compressedFilePath).length() / new File(filePath).length());
 
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
+
     public static void decompress(String filePath){
         long startTime = System.currentTimeMillis();
         try {
@@ -98,7 +115,6 @@ public class Main {
             e.printStackTrace();
         }
     }
-
     public static void updateFreq(byte[] buffer, int bytesRead, int n) {
         // usage of java.nio.ByteBuffer
         //https://docs.oracle.com/javase/8/docs/api/java/nio/ByteBuffer.html
@@ -116,18 +132,31 @@ public class Main {
                 key2[0] = null;
             }
         } else if (n > 1) {
-            for (int i = 0; i <= bytesRead - n; i++) {
-                byte[] key = Arrays.copyOfRange(buffer, i, i + n);
-                ByteBuffer byteBuffer = ByteBuffer.wrap(key);
-                if (map.containsKey(byteBuffer)) {
-                    map.put(byteBuffer.get(), map.get(byteBuffer) + 1);
+            // Handle N-grams
+            int i=0;
+            boolean flag = false;
+            for (; i <= bytesRead ; i++) {
+               if(bytesRead-i<n ) {
+                   if (bytesRead - i == 0)
+                       flag = true;
+                   break;
+               }
+                byte[] nGram = Arrays.copyOfRange(buffer, i, i + n);
+                String key = Arrays.toString(nGram);
+                if (nMap.containsKey(key)) {
+                    nMap.put(key, nMap.get(key) + 1);
                 } else {
-                    map.put(byteBuffer.get(), 1);
-
+                    nMap.put(key, 1);
                 }
-
+                i=i+n-1;
             }
+            if(flag)
+                return;
+            byte [] nGram = Arrays.copyOfRange(buffer, i, bytesRead);
+            String key = Arrays.toString(nGram);
+            nMap.put(key, 1);
         }
+
     }
 
     public static void addingToHeap() {
@@ -136,5 +165,11 @@ public class Main {
                 MinHeap.add(node);
             }
 
+    }
+    public static void addingToHeapNgram() {
+        for (String key : nMap.keySet()) {
+            HuffmanNode node = new HuffmanNode(key, nMap.get(key));
+            MinHeap.add(node);
+        }
     }
 }
