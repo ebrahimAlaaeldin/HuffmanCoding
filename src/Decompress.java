@@ -13,14 +13,17 @@ public class Decompress {
 
     public Decompress(String filePath) {
         this.filePath = filePath;
-        this.decodedFilePath = filePath.substring(0, filePath.lastIndexOf('.')) + ".pdf";
+        String directory = filePath.substring(0, filePath.lastIndexOf(File.separator)); // Extract the directory path
+        String originalFileName = filePath.substring(filePath.lastIndexOf(File.separator) + 1, filePath.lastIndexOf('.')); // Extract the file name without extension
+        this.decodedFilePath = directory + File.separator + "extracted." + originalFileName ; // Construct the new file path
     }
 
     public void decompress() throws IOException {
-        try (BufferedInputStream inputStream = new BufferedInputStream(new FileInputStream(filePath));
-             BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(decodedFilePath))) {
+        try (BufferedInputStream inputStream = new BufferedInputStream(new FileInputStream(filePath))) {
             readHeaderAndBuildDecodingMap(inputStream);
-            decodeData(inputStream, outputStream);
+            try (BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(decodedFilePath))) {
+                decodeData(inputStream, outputStream);
+            }
         }
     }
 
@@ -35,10 +38,8 @@ public class Decompress {
                     break;
                 }
                 if (line.startsWith("LENGTH:")) {
-                    // Parse the length of the original file
                     originalFileLength = Long.parseLong(line.substring("LENGTH:".length()));
                 } else {
-                    // Parse Huffman map line: Byte:HuffmanCode
                     String[] parts = line.split(":");
                     byte key = Byte.parseByte(parts[0]);
                     String huffmanCode = parts[1];
@@ -64,7 +65,6 @@ public class Decompress {
                 } else {
                     currentCode.append("0");
                 }
-
                 Byte decodedByte = decodingMap.get(currentCode.toString());
                 if (decodedByte != null) {
                     outputStream.write(decodedByte);
@@ -78,7 +78,6 @@ public class Decompress {
             }
         }
     }
-
 
     public String getDecodedFilePath() {
         return decodedFilePath;

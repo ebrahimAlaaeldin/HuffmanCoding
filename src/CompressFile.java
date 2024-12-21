@@ -13,19 +13,27 @@ public class CompressFile {
         return encodedFilePath;
     }
 
-    public CompressFile(HashMap<Byte, BitSet> map, HashMap<Byte, Integer> codeLengths, String filePath) {
+    public CompressFile(HashMap<Byte, BitSet> map, HashMap<Byte, Integer> codeLengths, String filePath,int n) {
         this.map = map;
         this.codeLengths = codeLengths;
         this.filePath = filePath;
-        this.encodedFilePath = filePath.substring(0, filePath.lastIndexOf('.')) + "_encoded.hc";
         File file = new File(filePath);
         this.originalFileLength = file.length();
+
+        // Extract the directory path
+        String directory = filePath.substring(0, filePath.lastIndexOf(File.separator));
+
+        // Extract the original file name with the extension
+        String originalFileName = filePath.substring(filePath.lastIndexOf(File.separator) + 1);
+
+        // Construct the new encoded file name
+        this.encodedFilePath = directory + File.separator + "21010017." + n + "." + originalFileName+".hc";
+
     }
 
     public void encodeAndWrite() throws IOException {
         try (BufferedInputStream bufferedInputStream = new BufferedInputStream(new FileInputStream(filePath));
              BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(new FileOutputStream(encodedFilePath))) {
-
             writeHeader(bufferedOutputStream);
             int bitBuffer = 0;
             int bitCount = 0;
@@ -41,7 +49,13 @@ public class CompressFile {
                     }
                     int codeLength = codeLengths.get(currentByte);
                     for (int j = 0; j < codeLength; j++) {
-                        bitBuffer = (bitBuffer << 1) | (bitSet.get(j) ? 1 : 0);
+                        bitBuffer = bitBuffer << 1;
+                        if (bitSet.get(j)) {
+                            bitBuffer = bitBuffer | 1;
+                        } else {
+                            bitBuffer = bitBuffer | 0;
+                        }
+
                         bitCount++;
                         if (bitCount == 8) {
                             bufferedOutputStream.write(bitBuffer);
