@@ -15,27 +15,53 @@ public class Main {
     });
 
     public static void main(String[] args) throws IOException {
-        String filePath="";
-        Scanner input = new Scanner(System.in);
-        System.out.println("Enter Whether you want to compress or decompress: ");
-        String choice = input.nextLine();
-        int n=0;
-        if(choice.equals(("c"))) {
-            System.out.println("please enter the file path: ");
-            filePath = input.nextLine();
-            System.out.println("Enter the number of characters: ");
-            n = input.nextInt();
-            compress(filePath, n);
-        }
-        else if(choice.equals("d")) {
-            System.out.println("please enter the file path: ");
-            filePath = input.nextLine();
-            decompress(filePath);
-        }
-        else
-            System.out.println("Invalid choice");
+        if(args.length>1) {
+            // Ensure at least 3 arguments are passed
+            String choice = args[0]; // First argument: 'c' or 'd'
+            String filePath = args[1]; // Second argument: file path
+            if (choice.equals("c")) {
+                if (args.length < 3) {
+                    System.out.println("Missing parameter: n (number of characters) for compression.");
+                    return;
+                }
+                int n;
+                try {
+                    n = Integer.parseInt(args[2]); // Third argument: n (number of characters)
+                } catch (NumberFormatException e) {
+                    System.out.println("Invalid number format for 'n'. It should be an integer.");
+                    return;
+                }
+                compress(filePath, n);
+            } else if (choice.equals("d")) {
+                decompress(filePath);
+            } else {
+                System.out.println("Invalid choice. Use 'c' for compression or 'd' for decompression.");
+            }
+        } else {
+            String filePath="";
+            Scanner input = new Scanner(System.in);
+            System.out.println("Enter Whether you want to compress or decompress: ");
+            String choice = input.nextLine();
+            int n=0;
+            if(choice.equals(("c"))) {
+                System.out.println("please enter the file path: ");
+                filePath = input.nextLine();
+                System.out.println("Enter the number of characters: ");
+                n = input.nextInt();
+                compress(filePath, n);
+            }
+            else if(choice.equals("d")) {
+                System.out.println("please enter the file path: ");
+                filePath = input.nextLine();
+                decompress(filePath);
+            }
+            else
+                System.out.println("Invalid choice");
 
+
+        }
     }
+
 
     public static void compress(String filePath, int n){
         BufferedInputStream bufferedInputStream = null;
